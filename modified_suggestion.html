@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Smart Planner - Global Weather</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: grey;
+    }
+
+    .page {
+      display: none;
+      padding: 20px;
+    }
+
+    .active {
+      display: block;
+    }
+
+    #page3, #page4 {
+      max-width: 500px;
+      margin: 60px auto;
+      padding: 30px;
+      border-radius: 12px;
+      background: white;
+      border: 2px solid red;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+
+    #page3 h2, #page4 h2 {
+      color: red;
+      font-size: 26px;
+      margin-bottom: 15px;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      margin-top: 15px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: red;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: darkred;
+    }
+
+    #weatherInfo {
+      margin-top: 20px;
+      padding: 20px;
+      background: #ffffff;
+      border: 2px solid red;
+      border-radius: 10px;
+    }
+
+    .suggestion-card {
+      background-color: #ffffff;
+      border-radius: 20px;
+      padding: 30px 20px;
+      width: 320px;
+      margin: 20px auto;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .suggestion-card h2 {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+
+    .suggestion-card h3 {
+      font-size: 18px;
+      color: #333;
+      margin-top: 20px;
+    }
+
+    .suggestion-item {
+      background-color: #eb0000;
+      color: white;
+      font-weight: bold;
+      border-radius: 10px;
+      padding: 10px;
+      margin: 8px 0;
+    }
+
+    .back-button {
+      margin-top: 25px;
+      padding: 10px 20px;
+      background-color: #1d1751;
+      color: #ffffff;
+      font-weight: bold;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Page 3 (Dashboard) -->
+<div id="page3" class="page active">
+  <h2>Welcome to Smart Planner 🌍</h2>
+  <p>Plan your day and check real-time weather anywhere in the world!</p>
+  <button onclick="goToPage4()">Check Weather</button>
+</div>
+
+<!-- Page 4 (Weather Page) -->
+<div id="page4" class="page">
+  <h2>Global Weather Checker ☁</h2>
+  <input type="text" id="cityInput" placeholder="Enter any city/area worldwide" />
+  <button onclick="getWeather()">Get Weather</button>
+
+  <div id="weatherInfo">
+    <p>Enter a location to see the weather info.</p>
+  </div>
+
+  <button onclick="showSuggestion()">Give me a suggestion</button>
+
+  <div id="suggestionBox" class="suggestion-card"></div>
+
+  <button class="back-button" onclick="goToPage3()">⬅ Back to Planner</button>
+</div>
+
+<script>
+  const apiKey = "83fa4fb81be83fad0f4f376413741aec"; // Replace with your OpenWeatherMap API key
+  let currentWeather = {};
+
+  async function getWeather() {
+    const location = document.getElementById("cityInput").value.trim();
+    const weatherInfo = document.getElementById("weatherInfo");
+
+    if (!location) {
+      weatherInfo.innerHTML = "<p>Please enter a location.</p>";
+      return;
+    }
+
+    try {
+      const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${location}&limit=1&appid=${apiKey}`;
+      const geoRes = await fetch(geoUrl);
+      const geoData = await geoRes.json();
+
+      if (!geoData || geoData.length === 0) {
+        weatherInfo.innerHTML = `<p>⚠ Could not find "${location}". Try another area.</p>`;
+        return;
+      }
+
+      const { lat, lon, name, country } = geoData[0];
+      const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
+      const weatherRes = await fetch(weatherUrl);
+      const data = await weatherRes.json();
+
+      const temp = data.main.temp;
+      const humidity = data.main.humidity;
+      const condition = data.weather[0].main;
+
+      currentWeather = {
+        city: `${name}, ${country}`,
+        temperature: `${temp}°C`,
+        humidity: `${humidity}%`,
+        condition
+      };
+
+      weatherInfo.innerHTML = `
+        <h3>${name}, ${country}</h3>
+        <p><strong>Temperature:</strong> ${temp}°C</p>
+        <p><strong>Condition:</strong> ${condition}</p>
+        <p><strong>Humidity:</strong> ${humidity}%</p>
+      `;
+    } catch (err) {
+      weatherInfo.innerHTML = "<p>Error fetching weather. Try again later.</p>";
+    }
+  }
+
+  function showSuggestion() {
+    const suggestionBox = document.getElementById("suggestionBox");
+
+    if (!currentWeather.city) {
+      suggestionBox.innerHTML = "<p>Please get the weather first.</p>";
+      return;
+    }
+
+    const { city, condition, humidity } = currentWeather;
+    const humidityVal = parseInt(humidity);
+
+    let suggestion = "";
+
+    if (condition.includes("Rain")) {
+      suggestion = "🌧 Rainy: Carry an umbrella, waterproof shoes, and avoid low-lying areas.";
+    } else if (condition.includes("Clear") && humidityVal < 60) {
+      suggestion = "☀ Sunny: Wear sunglasses, carry water, and apply sunscreen.";
+    } else if (humidityVal > 75 && condition.includes("Clear")) {
+      suggestion = "🌞 Hot & Humid: Wear light cotton clothes and drink fluids.";
+    } else if (condition.includes("Cloud")) {
+      suggestion = "☁ Cloudy: Carry a light jacket and stay updated for rain.";
+    } else if (condition.includes("Wind")) {
+      suggestion = "💨 Windy: Avoid loose clothing and be careful on bikes.";
+    } else {
+      suggestion = "😊 Normal: Comfortable weather! Enjoy your day.";
+    }
+
+    const thingsToCarry = ["Phone", "Charger", "Wallet"];
+    const placesToVisit = [
+      `Cafe nearby in ${city}`,
+      `Museum/park in ${city}`,
+      `Shopping area in ${city}`
+    ];
+
+    suggestionBox.innerHTML = `
+      <div class="suggestion-card">
+        <h2>Suggestions for ${city}</h2>
+        <p>${suggestion}</p>
+
+        <h3>Things to Carry</h3>
+        ${thingsToCarry.map(item => `<div class="suggestion-item">${item}</div>`).join("")}
+
+        <h3>Places to Visit</h3>
+        ${placesToVisit.map(item => `<div class="suggestion-item">${item}</div>`).join("")}
+      </div>
+    `;
+  }
+
+  function goToPage3() {
+    window.location.href = "modified_index.html";
+  }
+
+  function goToPage4() {
+    document.getElementById("page3").classList.remove("active");
+    document.getElementById("page4").classList.add("active");
+  }
+</script>
+
+</body>
+</html>
